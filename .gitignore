@@ -1,0 +1,32 @@
+# Local reconstruction source data; do not publish to GitHub Pages
+蓝坑合并-DOM_MERGE/
+蓝坑合并-DSM_MERGE/
+蓝坑合并-OBJ/
+蓝坑合并-OSGB/
+*.zip
+*.tif
+*.tfw
+*.prj
+*.osgb
+*.obj
+*.mtl
+*.jpg
+
+# Local/generated app state
+.agents/
+.codex/
+
+# Keep these static web files tracked explicitly
+!index.html
+!README.md
+!viewer/
+!viewer/cesium-app.js
+!viewer/cesium-styles.css
+
+*.xml
+index-local-three.html
+start-viewer.bat
+viewer/app.js
+viewer/styles.css
+viewer/basemaps/
+viewer/vendor/
