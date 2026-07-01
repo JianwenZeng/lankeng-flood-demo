@@ -1,4 +1,5 @@
-const ION_ASSET_ID = 5008047;
+// const ION_ASSET_ID = 5008047;
+const ION_ASSET_ID = 5011020;
 const ION_ACCESS_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjZGFkYWNkOS1jNmRiLTQ1ZmUtODExMi1hN2E2NTNkYTQ2MzgiLCJpZCI6MTQ0NzkwLCJpYXQiOjE2ODYwMjk5MTd9.UQB3F_dFJVONKtmnPBHGoiN3Myd2Ncus9noUj3nQOeo";
 
 const SRS_ORIGIN = {
@@ -77,14 +78,33 @@ const elements = {
 
 Cesium.Ion.defaultAccessToken = ION_ACCESS_TOKEN;
 
+const blankBaseLayerViewModel = new Cesium.ProviderViewModel({
+  name: "黑色背景",
+  tooltip: "不加载地图底图，只显示黑色背景和三维模型。",
+  iconUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='black'/%3E%3Cpath d='M10 44 27 25l9 10 8-12 10 21H10Z' fill='%23212a33'/%3E%3C/svg%3E",
+  creationFunction: () => Cesium.SingleTileImageryProvider.fromUrl(
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2' viewBox='0 0 2 2'%3E%3Crect width='2' height='2' fill='black'/%3E%3C/svg%3E",
+    { rectangle: Cesium.Rectangle.MAX_VALUE }
+  )
+});
+
+const imageryProviderViewModels = [
+  blankBaseLayerViewModel,
+  ...Cesium.createDefaultImageryProviderViewModels()
+];
+
 const viewer = new Cesium.Viewer("cesiumContainer", {
   terrain: Cesium.Terrain.fromWorldTerrain({ requestWaterMask: true, requestVertexNormals: true }),
+  skyBox: false,
+  skyAtmosphere: false,
   animation: false,
   timeline: false,
   geocoder: false,
   homeButton: false,
   sceneModePicker: false,
-  baseLayerPicker: false,
+  baseLayerPicker: true,
+  selectedImageryProviderViewModel: blankBaseLayerViewModel,
+  imageryProviderViewModels,
   navigationHelpButton: false,
   fullscreenButton: true,
   infoBox: false,
@@ -92,9 +112,10 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
   shouldAnimate: true
 });
 
+viewer.scene.backgroundColor = Cesium.Color.BLACK;
+viewer.scene.globe.baseColor = Cesium.Color.BLACK;
 viewer.scene.globe.depthTestAgainstTerrain = true;
-viewer.scene.skyAtmosphere.show = true;
-viewer.scene.fog.enabled = true;
+viewer.scene.fog.enabled = false;
 viewer.scene.light = new Cesium.SunLight();
 viewer.scene.postProcessStages.fxaa.enabled = true;
 
