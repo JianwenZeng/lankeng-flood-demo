@@ -1,5 +1,4 @@
 const ION_ASSET_ID = 5008047;
-// const ION_ASSET_ID = 5007907;
 const ION_ACCESS_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjZGFkYWNkOS1jNmRiLTQ1ZmUtODExMi1hN2E2NTNkYTQ2MzgiLCJpZCI6MTQ0NzkwLCJpYXQiOjE2ODYwMjk5MTd9.UQB3F_dFJVONKtmnPBHGoiN3Myd2Ncus9noUj3nQOeo";
 
 const SRS_ORIGIN = {
@@ -55,7 +54,7 @@ const state = {
     speed: FLOOD_SCENARIOS.medium.speed,
     opacity: 0.55,
     playing: false,
-    visible: true
+    visible: false
   },
   lastTickMs: performance.now()
 };
@@ -63,19 +62,6 @@ const state = {
 const elements = {
   status: document.querySelector("#load-state"),
   flyModel: document.querySelector("#fly-model"),
-  resetLocation: document.querySelector("#reset-location"),
-  calibrateHeight: document.querySelector("#calibrate-height"),
-  offsetEast: document.querySelector("#offset-east"),
-  offsetNorth: document.querySelector("#offset-north"),
-  offsetHeight: document.querySelector("#offset-height"),
-  heading: document.querySelector("#heading"),
-  scale: document.querySelector("#scale"),
-  offsetEastValue: document.querySelector("#offset-east-value"),
-  offsetNorthValue: document.querySelector("#offset-north-value"),
-  offsetHeightValue: document.querySelector("#offset-height-value"),
-  headingValue: document.querySelector("#heading-value"),
-  scaleValue: document.querySelector("#scale-value"),
-  locationReadout: document.querySelector("#location-readout"),
   floodToggle: document.querySelector("#flood-toggle"),
   floodScenario: document.querySelector("#flood-scenario"),
   floodPlay: document.querySelector("#flood-play"),
@@ -89,18 +75,16 @@ const elements = {
   floodReadout: document.querySelector("#flood-readout")
 };
 
-if (ION_ACCESS_TOKEN) {
-  Cesium.Ion.defaultAccessToken = ION_ACCESS_TOKEN;
-}
+Cesium.Ion.defaultAccessToken = ION_ACCESS_TOKEN;
 
 const viewer = new Cesium.Viewer("cesiumContainer", {
   terrain: Cesium.Terrain.fromWorldTerrain({ requestWaterMask: true, requestVertexNormals: true }),
   animation: false,
   timeline: false,
-  geocoder: true,
-  homeButton: true,
-  sceneModePicker: true,
-  baseLayerPicker: true,
+  geocoder: false,
+  homeButton: false,
+  sceneModePicker: false,
+  baseLayerPicker: false,
   navigationHelpButton: false,
   fullscreenButton: true,
   infoBox: false,
@@ -111,6 +95,8 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
 viewer.scene.globe.depthTestAgainstTerrain = true;
 viewer.scene.skyAtmosphere.show = true;
 viewer.scene.fog.enabled = true;
+viewer.scene.light = new Cesium.SunLight();
+viewer.scene.postProcessStages.fxaa.enabled = true;
 
 let tileset = null;
 let floodEntity = null;
@@ -198,30 +184,29 @@ function buildModelMatrix() {
   return Cesium.Matrix4.multiply(frame, scaleMatrix, new Cesium.Matrix4());
 }
 
-function updateLocationControlsFromState() {
-  elements.offsetEast.value = state.georef.offsetEast;
-  elements.offsetNorth.value = state.georef.offsetNorth;
-  elements.offsetHeight.value = state.georef.offsetHeight;
-  elements.heading.value = state.georef.heading;
-  elements.scale.value = state.georef.scale;
-  elements.offsetEastValue.textContent = `${state.georef.offsetEast.toFixed(0)} m`;
-  elements.offsetNorthValue.textContent = `${state.georef.offsetNorth.toFixed(0)} m`;
-  elements.offsetHeightValue.textContent = `${state.georef.offsetHeight.toFixed(1)} m`;
-  elements.headingValue.textContent = `${state.georef.heading.toFixed(1)}°`;
-  elements.scaleValue.textContent = state.georef.scale.toFixed(2);
-
-  const origin = getOriginLonLat();
-  const center = getModelCenterLonLat();
-  elements.locationReadout.textContent =
-    `原点 ${origin.lon.toFixed(6)}, ${origin.lat.toFixed(6)} | ` +
-    `中心 ${center.lon.toFixed(6)}, ${center.lat.toFixed(6)} | ` +
-    `高程 ${getModelCenterHeight().toFixed(1)} m`;
-}
-
 function applyTilesetTransform() {
-  updateLocationControlsFromState();
   if (tileset) {
     tileset.modelMatrix = buildModelMatrix();
+  }
+}
+
+async function calibrateHeightToTerrain() {
+  setStatus("贴地校准");
+  try {
+    const lowestPoint = localToLonLat(LOWEST_MODEL_POINT.x, LOWEST_MODEL_POINT.y);
+    const positions = [Cesium.Cartographic.fromDegrees(lowestPoint.lon, lowestPoint.lat)];
+    const sampled = await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, positions);
+    const terrainHeight = sampled[0]?.height;
+    if (!Number.isFinite(terrainHeight)) {
+      throw new Error("Terrain height unavailable");
+    }
+    state.georef.offsetHeight = terrainHeight - (SRS_ORIGIN.height + LOWEST_MODEL_POINT.z);
+    applyTilesetTransform();
+    updateFloodReadout();
+    setStatus("贴地完成");
+  } catch (error) {
+    console.error(error);
+    setStatus("校准失败");
   }
 }
 
@@ -234,10 +219,10 @@ async function loadIonTileset() {
       dynamicScreenSpaceError: true
     });
     tileset.modelMatrix = buildModelMatrix();
-    tileset.show = true;
     viewer.scene.primitives.add(tileset);
-    setStatus("模型完成");
+    await calibrateHeightToTerrain();
     await viewer.zoomTo(tileset, new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-35), 1200));
+    setStatus("演示就绪");
   } catch (error) {
     console.error(error);
     setStatus("模型错误");
@@ -247,34 +232,6 @@ async function loadIonTileset() {
   }
 }
 
-
-function getLowestPointLonLat() {
-  return localToLonLat(LOWEST_MODEL_POINT.x, LOWEST_MODEL_POINT.y);
-}
-
-async function calibrateHeightToTerrain() {
-  setStatus("校准高程");
-  elements.calibrateHeight.disabled = true;
-  try {
-    const lowestPoint = getLowestPointLonLat();
-    const positions = [Cesium.Cartographic.fromDegrees(lowestPoint.lon, lowestPoint.lat)];
-    const sampled = await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, positions);
-    const terrainHeight = sampled[0]?.height;
-    if (!Number.isFinite(terrainHeight)) {
-      throw new Error("terrain height unavailable");
-    }
-    const modelLowestHeight = SRS_ORIGIN.height + LOWEST_MODEL_POINT.z;
-    state.georef.offsetHeight = terrainHeight - modelLowestHeight;
-    applyTilesetTransform();
-    updateFloodReadout();
-    setStatus(`高程校准 ${state.georef.offsetHeight.toFixed(1)}m`);
-  } catch (error) {
-    console.error(error);
-    setStatus("校准失败");
-  } finally {
-    elements.calibrateHeight.disabled = false;
-  }
-}
 function flyToModelArea() {
   if (tileset) {
     viewer.flyTo(tileset, {
@@ -292,16 +249,6 @@ function flyToModelArea() {
       roll: 0
     }
   });
-}
-
-function resetLocation() {
-  state.georef.offsetEast = 0;
-  state.georef.offsetNorth = 0;
-  state.georef.offsetHeight = 0;
-  state.georef.heading = 0;
-  state.georef.scale = 1;
-  applyTilesetTransform();
-  flyToModelArea();
 }
 
 function getFloodHierarchy() {
@@ -322,7 +269,7 @@ function getFloodAbsoluteHeight() {
 }
 
 function getFloodMaterialColor() {
-  return Cesium.Color.fromCssColorString("#24a7df").withAlpha(state.flood.opacity);
+  return Cesium.Color.fromCssColorString("#21a8e8").withAlpha(state.flood.opacity);
 }
 
 function createFloodLayer() {
@@ -343,16 +290,20 @@ function createFloodLayer() {
 }
 
 function updateFloodReadout() {
-  const absoluteElevation = getFloodAbsoluteHeight();
-  const remainingSeconds = state.flood.speed > 0 ? Math.max(0, (state.flood.target - state.flood.level) / state.flood.speed) : 0;
+  if (!state.flood.visible) {
+    elements.floodReadout.textContent = "洪水层未开启";
+  } else {
+    const absoluteElevation = getFloodAbsoluteHeight();
+    const remainingSeconds = state.flood.speed > 0 ? Math.max(0, (state.flood.target - state.flood.level) / state.flood.speed) : 0;
+    elements.floodReadout.textContent =
+      `绝对高程 ${absoluteElevation.toFixed(1)} m | ` +
+      `目标 ${state.flood.target.toFixed(1)} m | ` +
+      `预计 ${remainingSeconds.toFixed(1)} s`;
+  }
   elements.floodLevel.value = state.flood.level.toFixed(1);
   elements.floodSpeed.value = state.flood.speed.toFixed(1);
   elements.floodLevelValue.textContent = `${state.flood.level.toFixed(1)} m`;
   elements.floodSpeedValue.textContent = `${state.flood.speed.toFixed(1)} m/s`;
-  elements.floodReadout.textContent =
-    `绝对高程 ${absoluteElevation.toFixed(1)} m | ` +
-    `目标 ${state.flood.target.toFixed(1)} m | ` +
-    `预计 ${remainingSeconds.toFixed(1)} s`;
 }
 
 function setFloodLevel(level) {
@@ -367,7 +318,19 @@ function setFloodScenario(name) {
   updateFloodReadout();
 }
 
+function showFloodLayer(visible) {
+  state.flood.visible = visible;
+  elements.floodToggle.checked = visible;
+  if (floodEntity) {
+    floodEntity.show = visible;
+  }
+  updateFloodReadout();
+}
+
 function toggleFloodPlayback() {
+  if (!state.flood.visible) {
+    showFloodLayer(true);
+  }
   if (state.flood.playing) {
     state.flood.playing = false;
     elements.floodPlay.textContent = "播放上涨";
@@ -387,6 +350,7 @@ function resetFlood() {
 }
 
 function fitFlood() {
+  showFloodLayer(true);
   if (floodEntity) {
     viewer.flyTo(floodEntity, {
       offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-50), 1400)
@@ -412,37 +376,7 @@ function tickFlood() {
 
 function bindEvents() {
   elements.flyModel.addEventListener("click", flyToModelArea);
-  elements.resetLocation.addEventListener("click", resetLocation);
-  elements.calibrateHeight.addEventListener("click", calibrateHeightToTerrain);
-
-  elements.offsetEast.addEventListener("input", () => {
-    state.georef.offsetEast = Number(elements.offsetEast.value);
-    applyTilesetTransform();
-  });
-  elements.offsetNorth.addEventListener("input", () => {
-    state.georef.offsetNorth = Number(elements.offsetNorth.value);
-    applyTilesetTransform();
-  });
-  elements.offsetHeight.addEventListener("input", () => {
-    state.georef.offsetHeight = Number(elements.offsetHeight.value);
-    applyTilesetTransform();
-    updateFloodReadout();
-  });
-  elements.heading.addEventListener("input", () => {
-    state.georef.heading = Number(elements.heading.value);
-    applyTilesetTransform();
-  });
-  elements.scale.addEventListener("input", () => {
-    state.georef.scale = Number(elements.scale.value);
-    applyTilesetTransform();
-  });
-
-  elements.floodToggle.addEventListener("change", () => {
-    state.flood.visible = elements.floodToggle.checked;
-    if (floodEntity) {
-      floodEntity.show = state.flood.visible;
-    }
-  });
+  elements.floodToggle.addEventListener("change", () => showFloodLayer(elements.floodToggle.checked));
   elements.floodScenario.addEventListener("change", () => setFloodScenario(elements.floodScenario.value));
   elements.floodPlay.addEventListener("click", toggleFloodPlayback);
   elements.floodReset.addEventListener("click", resetFlood);
@@ -450,6 +384,7 @@ function bindEvents() {
   elements.floodLevel.addEventListener("input", () => {
     state.flood.playing = false;
     elements.floodPlay.textContent = "播放上涨";
+    showFloodLayer(true);
     setFloodLevel(Number(elements.floodLevel.value));
   });
   elements.floodSpeed.addEventListener("input", () => {
@@ -466,23 +401,15 @@ function initFloodDefaults() {
   state.flood.opacity = Number(elements.floodOpacity.value);
   setFloodScenario(elements.floodScenario.value);
   setFloodLevel(Number(elements.floodLevel.value));
+  showFloodLayer(false);
   createFloodLayer();
 }
 
 async function init() {
-  if (!window.Cesium) {
-    setStatus("Cesium 未加载");
-    return;
-  }
   bindEvents();
-  updateLocationControlsFromState();
   initFloodDefaults();
   viewer.scene.preRender.addEventListener(tickFlood);
   await loadIonTileset();
 }
 
 init();
-
-
-
-

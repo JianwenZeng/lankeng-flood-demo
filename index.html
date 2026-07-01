@@ -3,68 +3,44 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>蓝坑 3D 洪水淹没 Cesium 演示</title>
+    <title>蓝坑 3D 洪水淹没演示</title>
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.131/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
     <link rel="stylesheet" href="./viewer/cesium-styles.css" />
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.131/Build/Cesium/Cesium.js"></script>
   </head>
   <body>
     <main id="app">
-      <section id="cesiumContainer" aria-label="Cesium 三维地球视窗"></section>
+      <section id="cesiumContainer" aria-label="蓝坑三维洪水演示场景"></section>
 
-      <aside class="panel" aria-label="模型和洪水控制面板">
+      <aside class="panel" aria-label="洪水演示控制面板">
         <header class="panel-header">
           <div>
-            <h1>蓝坑三维洪水演示</h1>
-            <p>Cesium ion 在线 3D Tiles</p>
+            <h1>蓝坑 3D 洪水淹没演示</h1>
+            <p>真实三维场景 · 在线地图 · 动态水位</p>
           </div>
           <span id="load-state" class="state">初始化</span>
         </header>
 
-        <div class="stats">
+        <div class="hero-card">
           <div>
-            <span>ion Asset ID</span>
-            <strong>5007870</strong>
+            <span>场景模型</span>
+            <strong>Cesium ion 3D Tiles</strong>
           </div>
           <div>
-            <span>坐标系来源</span>
-            <strong>EPSG:4546</strong>
-          </div>
-          <div>
-            <span>原点高程</span>
-            <strong>213 m</strong>
+            <span>定位方式</span>
+            <strong>自动贴地校准</strong>
           </div>
         </div>
 
-        <section class="control-section">
-          <div class="section-title">
-            <h2>模型定位</h2>
-          </div>
-          <div class="actions three-col">
-            <button id="fly-model" type="button">定位模型</button>
-            <button id="calibrate-height" type="button">贴地校准</button>
-            <button id="reset-location" type="button">重置定位</button>
-          </div>
-          <label for="offset-east">东西偏移 <span id="offset-east-value">0 m</span></label>
-          <input id="offset-east" type="range" min="-500" max="500" step="1" value="0" />
-          <label for="offset-north">南北偏移 <span id="offset-north-value">0 m</span></label>
-          <input id="offset-north" type="range" min="-500" max="500" step="1" value="0" />
-          <label for="offset-height">高程偏移 <span id="offset-height-value">0 m</span></label>
-          <input id="offset-height" type="range" min="-500" max="500" step="0.5" value="0" />
-          <label for="heading">水平旋转 <span id="heading-value">0°</span></label>
-          <input id="heading" type="range" min="-180" max="180" step="0.5" value="0" />
-          <label for="scale">缩放 <span id="scale-value">1.00</span></label>
-          <input id="scale" type="range" min="0.5" max="2" step="0.01" value="1" />
-          <div id="location-readout" class="readout"></div>
-        </section>
+        <button id="fly-model" class="primary-action" type="button">回到蓝坑场景</button>
 
         <section class="control-section flood-controls">
           <div class="section-title">
             <h2>洪水淹没演示</h2>
           </div>
           <label class="check-row">
-            <input id="flood-toggle" type="checkbox" checked />
-            显示洪水层
+            <input id="flood-toggle" type="checkbox" />
+            显示洪水淹没范围
           </label>
           <label for="flood-scenario">演示情景</label>
           <select id="flood-scenario">
@@ -84,11 +60,11 @@
           <input id="flood-speed" type="range" min="0.2" max="5" step="0.1" value="1" />
           <label for="flood-opacity">水体透明度</label>
           <input id="flood-opacity" type="range" min="0.15" max="0.85" step="0.05" value="0.55" />
-          <div id="flood-readout" class="readout">绝对高程 213.0 m</div>
+          <div id="flood-readout" class="readout">洪水层未开启</div>
         </section>
 
         <p class="hint">
-          当前模型从 Cesium ion 在线加载，正射影像暂不加载。若模型位置仍有偏差，先用“模型定位”里的偏移和旋转微调。
+          打开页面后会自动加载三维模型并贴合地形。勾选洪水范围后，可播放不同水位情景的动态上涨过程。
         </p>
       </aside>
     </main>
@@ -96,4 +72,3 @@
     <script type="module" src="./viewer/cesium-app.js"></script>
   </body>
 </html>
-
