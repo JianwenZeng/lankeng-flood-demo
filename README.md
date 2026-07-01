@@ -48,7 +48,7 @@ Cesium ion Asset ID: 5007870
 - 当前正射影像未接入 Cesium ion，因此默认入口暂不加载本地 DOM 正射影像。
 - 当前洪水层是演示级水平水面上涨，不是严格二维水动力模型。
 - 若要做真实洪水过程，应基于 DSM/DEM、边界条件和降雨或流量过程线计算每个时刻的水深栅格，再把水深结果作为动态淹没贴图或水体网格叠加。
-- 当前仓库代码不再写死 Cesium ion token。页面首次打开时会提示输入 token，并保存到浏览器 localStorage。公开给别人访问时，建议在 Cesium ion 后台创建只读、限制来源域名的 token，再把 token 通过单独渠道发给访问者，或在确认风险后改成公开受限 token。
+- 当前代码已内置只读 Cesium ion token，用户打开 GitHub Pages 后可直接加载模型。公开部署时建议继续在 Cesium ion 后台限制 token 的来源域名和可访问资产。
 
 
 ## GitHub Pages 发布
@@ -69,3 +69,4 @@ viewer/cesium-styles.css
 ```text
 https://JianwenZeng.github.io/lankeng-flood-demo/
 ```
+

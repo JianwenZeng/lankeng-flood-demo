@@ -1,33 +1,6 @@
 const ION_ASSET_ID = 5008047;
 // const ION_ASSET_ID = 5007907;
-const ION_TOKEN_STORAGE_KEY = "lankengCesiumIonToken";
-
-function getIonAccessToken() {
-  const params = new URLSearchParams(window.location.search);
-  const urlToken = params.get("ionToken");
-  if (urlToken && urlToken.trim()) {
-    const token = urlToken.trim();
-    localStorage.setItem(ION_TOKEN_STORAGE_KEY, token);
-    window.history.replaceState({}, document.title, window.location.pathname);
-    return token;
-  }
-
-  const storedToken = localStorage.getItem(ION_TOKEN_STORAGE_KEY);
-  if (storedToken && storedToken.trim()) {
-    return storedToken.trim();
-  }
-
-  const enteredToken = window.prompt("请输入 Cesium ion access token。建议使用只读、限制域名的 token。", "");
-  if (enteredToken && enteredToken.trim()) {
-    const token = enteredToken.trim();
-    localStorage.setItem(ION_TOKEN_STORAGE_KEY, token);
-    return token;
-  }
-
-  return "";
-}
-
-const ION_ACCESS_TOKEN = getIonAccessToken();
+const ION_ACCESS_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjZGFkYWNkOS1jNmRiLTQ1ZmUtODExMi1hN2E2NTNkYTQ2MzgiLCJpZCI6MTQ0NzkwLCJpYXQiOjE2ODYwMjk5MTd9.UQB3F_dFJVONKtmnPBHGoiN3Myd2Ncus9noUj3nQOeo";
 
 const SRS_ORIGIN = {
   easting: 618590,
@@ -121,9 +94,7 @@ if (ION_ACCESS_TOKEN) {
 }
 
 const viewer = new Cesium.Viewer("cesiumContainer", {
-  terrain: ION_ACCESS_TOKEN
-    ? Cesium.Terrain.fromWorldTerrain({ requestWaterMask: true, requestVertexNormals: true })
-    : new Cesium.EllipsoidTerrainProvider(),
+  terrain: Cesium.Terrain.fromWorldTerrain({ requestWaterMask: true, requestVertexNormals: true }),
   animation: false,
   timeline: false,
   geocoder: true,
@@ -503,10 +474,6 @@ async function init() {
     setStatus("Cesium 未加载");
     return;
   }
-  if (!ION_ACCESS_TOKEN) {
-    setStatus("缺少 token");
-    return;
-  }
   bindEvents();
   updateLocationControlsFromState();
   initFloodDefaults();
@@ -515,6 +482,7 @@ async function init() {
 }
 
 init();
+
 
 
 
